@@ -1,5 +1,6 @@
 package dev.bron.assignment.users_assignment.exception;
 
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -9,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
-public class GlobalException {
+public class GlobalExceptionHandler {
     @ExceptionHandler(GroupNotFoundException.class)
     ResponseEntity<String> handleGroupNotFoundException(GroupNotFoundException e) {
         return ResponseEntity.notFound().build();
@@ -17,6 +18,11 @@ public class GlobalException {
 
     @ExceptionHandler(CustomerNotFoundException.class)
     ResponseEntity<String> handleCustomerNotFoundException(CustomerNotFoundException e) {
+        return ResponseEntity.notFound().build();
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    ResponseEntity<String> handleEntityNotFoundException(EntityNotFoundException e) {
         return ResponseEntity.notFound().build();
     }
 

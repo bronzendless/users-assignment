@@ -8,6 +8,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -15,6 +16,9 @@ import java.util.stream.Collectors;
 public interface CustomersMapper {
     @Mapping(target = "customerGroups", source = "groups")
     CustomersDto toDto(CustomersEntity entity);
+
+    @Mapping(target = "customerGroups", source = "groups")
+    List<CustomersDto> toDtos(List<CustomersEntity> entities);
 
     @Mapping(target = "id", ignore = true)
     CustomersEntity toCreateEntity(CustomersRequestDto dto);

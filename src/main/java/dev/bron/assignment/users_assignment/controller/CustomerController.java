@@ -5,6 +5,7 @@ import dev.bron.assignment.users_assignment.dto.CustomerSalaryRequestDto;
 import dev.bron.assignment.users_assignment.dto.CustomersDto;
 import dev.bron.assignment.users_assignment.dto.CustomersRequestDto;
 import dev.bron.assignment.users_assignment.service.CustomersService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,18 +20,20 @@ import java.util.UUID;
 public class CustomerController {
     private final CustomersService customersService;
 
-    @PostMapping("/customer")
-    public ResponseEntity<CustomersDto> createCustomer(@RequestBody CustomersRequestDto request) {
+    @PostMapping("/customers")
+    public ResponseEntity<CustomersDto> createCustomer(
+            @RequestBody @Valid CustomersRequestDto request
+    ) {
         log.info("===== Start create customer by request : {} =====", request);
         final CustomersDto customersDto = customersService.createCustomer(request);
         log.info("===== End create customer =====");
         return ResponseEntity.ok(customersDto);
     }
 
-    @PatchMapping("/customer/{customerId}")
+    @PatchMapping("/customers/{customerId}")
     public ResponseEntity<CustomersDto> updateCustomerById(
             @PathVariable("customerId") UUID customerId,
-            @RequestBody CustomerSalaryRequestDto request
+            @RequestBody @Valid CustomerSalaryRequestDto request
     ) {
         log.info("===== Start patch salary by customerId : {} =====", customerId);
         final CustomersDto customersDto = customersService.updateCustomer(customerId, request);
@@ -38,7 +41,7 @@ public class CustomerController {
         return ResponseEntity.ok(customersDto);
     }
 
-    @GetMapping("/customer/{customerId}")
+    @GetMapping("/customers/{customerId}")
     public ResponseEntity<CustomersDto> getCustomerById(
             @PathVariable("customerId") UUID customerId
     ) {
@@ -48,17 +51,17 @@ public class CustomerController {
         return ResponseEntity.ok(customer);
     }
 
-    @GetMapping("/customer/groups")
+    @GetMapping("/customers/groups")
     public ResponseEntity<List<CustomersDto>> getCustomerByGroupName(
-            @ModelAttribute CustomerGroupNamesRequestDto request
+            @ModelAttribute @Valid CustomerGroupNamesRequestDto request
     ) {
-        log.info("===== Start get customer by groupNames : {} =====", request.getGroupNames());
-        final List<CustomersDto> customers = customersService.getCustomerByGroupNames(request);
-        log.info("===== End get customer by groupNames =====");
+        log.info("===== Start get customer by groupName : {} =====", request.getGroupName());
+        final List<CustomersDto> customers = customersService.getCustomerByGroupName(request);
+        log.info("===== End get customer by groupName =====");
         return ResponseEntity.ok(customers);
     }
 
-    @GetMapping("/customer")
+    @GetMapping("/customers")
     public ResponseEntity<List<CustomersDto>> getCustomers() {
         log.info("===== Start get all customer =====");
         final List<CustomersDto> customers = customersService.getCustomers();

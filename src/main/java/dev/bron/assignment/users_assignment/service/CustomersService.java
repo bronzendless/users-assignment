@@ -37,8 +37,7 @@ public class CustomersService {
             throw new CustomerAlreadyExistsException("name");
         }
 
-        CustomerGroups group = getGruopBySalary(request.getSalary());
-        Set<GroupsEntity> groupsEntities = groupsRepository.findByNameIn(List.of(CustomerGroups.CUSTOMER.toString(), group.toString()));
+        Set<GroupsEntity> groupsEntities = getGruopBySalary(request.getSalary());
 
         if (groupsEntities.size() < 2) {
             throw new GroupNotFoundException("group");
@@ -46,16 +45,62 @@ public class CustomersService {
 
         CustomersEntity customersEntity = customerMapper.toCreateEntity(request);
         customersEntity.setGroups(groupsEntities);
-        return customerMapper.toDto(customerRepository.save(customersEntity));
+
+        CustomersEntity customersSaved = customerRepository.save(customersEntity);
+        return customerMapper.toDto(customersSaved);
     }
 
     @Transactional
     public CustomersDto updateCustomer(UUID customerId, CustomerSalaryRequestDto request) {
-        CustomersEntity customersEntity = getCustomerDataById(customerId);
-        Set<GroupsEntity> groupsEntity = customersEntity.getGroups();
-        CustomerGroups customerGroups = getGruopBySalary(request.getSalary());
+        CustomersEntity customersEntity = customerRepository.getReferenceById(customerId);
 
-        boolean isExistsGroup = groupsEntity.stream().anyMatch(item -> item.getName().equals(customerGroups.toString()));
+//        updateCustomerGroups(customersEntity, request.getSalary());
+        replaceCustomerGroups(customersEntity, request.getSalary());
+
+        customersEntity.setSalary(request.getSalary());
+        CustomersEntity savedCustomer = customerRepository.save(customersEntity);
+        return customerMapper.toDto(savedCustomer);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CustomersDto> getCustomers() {
+        List<CustomersEntity> customers = customerRepository.findAll();
+        return customerMapper.toDtos(customers);
+    }
+
+    @Transactional(readOnly = true)
+    public CustomersDto getCustomerById(UUID customerId) {
+        Optional<CustomersEntity> customersEntityOpt = customerRepository.findById(customerId);
+        CustomersEntity customersEntity = customersEntityOpt
+                .orElseThrow(() -> new CustomerNotFoundException("group"));
+        return customerMapper.toDto(customersEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CustomersDto> getCustomerByGroupName(CustomerGroupNamesRequestDto request) {
+        Optional<GroupsEntity> groupsEntityOtp = groupsRepository.findByName(request.getGroupName());
+        GroupsEntity groupsEntity = groupsEntityOtp
+                .orElseThrow(() -> new GroupNotFoundException("group"));
+
+        List<CustomersEntity> customersEntity = groupsEntity.getCustomers().stream()
+                .toList();
+        return customerMapper.toDtos(customersEntity);
+//        List<CustomersEntity> customersEntities = customerRepository.findByGroupNames(request.getGroupNames());
+//        return customersEntities.stream()
+//                .map(customerMapper::toDto)
+//                .toList();
+    }
+
+    // NOTE - use this logic when Set/List have a big size
+    private void updateCustomerGroups(
+            CustomersEntity customersEntity,
+            BigDecimal salary
+    ) {
+        Set<GroupsEntity> groupsEntity = customersEntity.getGroups();
+        CustomerGroups customerGroups = getCustomerGroupsBySalary(salary);
+
+        boolean isExistsGroup = groupsEntity.stream()
+                .anyMatch(item -> item.getName().equals(customerGroups.toString()));
 
         if (!isExistsGroup) {
             Optional<GroupsEntity> groupEntity = groupsRepository.findByName(customerGroups.toString());
@@ -66,46 +111,32 @@ public class CustomersService {
             groupsEntity.add(groupEntity.get());
         }
 
-        customersEntity.setSalary(request.getSalary());
-
-        return customerMapper.toDto(customerRepository.save(customersEntity));
+        customersEntity.setGroups(groupsEntity);
     }
 
-    @Transactional(readOnly = true)
-    public List<CustomersDto> getCustomers() {
-        return customerRepository.findAll().stream()
-                .map(customerMapper::toDto)
-                .toList();
+    // NOTE - use this logic when Set/List have a small size
+    private void replaceCustomerGroups(
+            CustomersEntity customersEntity,
+            BigDecimal salary
+    ) {
+        Set<GroupsEntity> groupsEntities = getGruopBySalary(salary);
+        customersEntity.setGroups(groupsEntities);
     }
 
-    @Transactional(readOnly = true)
-    public CustomersDto getCustomerById(UUID customerId) {
-        CustomersEntity customersEntity = getCustomerDataById(customerId);
-        return customerMapper.toDto(customersEntity);
+    private Set<GroupsEntity> getGruopBySalary(BigDecimal salary) {
+        CustomerGroups group = getCustomerGroupsBySalary(salary);
+        List<String> groupNames = List.of(CustomerGroups.CUSTOMER.toString(), group.toString());
+        return groupsRepository.findByNameIn(groupNames);
     }
 
-    @Transactional(readOnly = true)
-    public List<CustomersDto> getCustomerByGroupNames(CustomerGroupNamesRequestDto request) {
-        List<CustomersEntity> customersEntities = customerRepository.findByGroupNames(request.getGroupNames());
-        return customersEntities.stream()
-                .map(customerMapper::toDto)
-                .toList();
-    }
-
-    private CustomersEntity getCustomerDataById(UUID customerId) {
-        Optional<CustomersEntity> customersEntityOpt = customerRepository.findById(customerId);
-        if (customersEntityOpt.isEmpty()) {
-            throw new CustomerNotFoundException("id");
-        }
-        return customersEntityOpt.get();
-    }
-
-    private CustomerGroups getGruopBySalary(BigDecimal salary) {
+    private CustomerGroups getCustomerGroupsBySalary(BigDecimal salary) {
         if (salary.compareTo(SalaryThresholds.SALARY_100K) > 0) {
             return CustomerGroups.PLATINUM;
-        } else if (salary.compareTo(SalaryThresholds.SALARY_100K) <= 0 && salary.compareTo(SalaryThresholds.SALARY_50K) >= 0) {
+        } else if (salary.compareTo(SalaryThresholds.SALARY_100K) <= 0 &&
+                salary.compareTo(SalaryThresholds.SALARY_50K) >= 0) {
             return CustomerGroups.GOLD;
-        } else if (salary.compareTo(SalaryThresholds.SALARY_50K) < 0 && salary.compareTo(SalaryThresholds.SALARY_30K) >= 0) {
+        } else if (salary.compareTo(SalaryThresholds.SALARY_50K) < 0 &&
+                salary.compareTo(SalaryThresholds.SALARY_30K) >= 0) {
             return CustomerGroups.SILVER;
         } else {
             throw new GroupNotFoundException("group");

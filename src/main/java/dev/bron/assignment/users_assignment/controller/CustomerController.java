@@ -4,6 +4,9 @@ import dev.bron.assignment.users_assignment.dto.CustomerGroupNamesRequestDto;
 import dev.bron.assignment.users_assignment.dto.CustomerSalaryRequestDto;
 import dev.bron.assignment.users_assignment.dto.CustomersDto;
 import dev.bron.assignment.users_assignment.dto.CustomersRequestDto;
+import dev.bron.assignment.users_assignment.exception.CustomerAlreadyExistsException;
+import dev.bron.assignment.users_assignment.exception.CustomerNotFoundException;
+import dev.bron.assignment.users_assignment.exception.GroupNotFoundException;
 import dev.bron.assignment.users_assignment.service.CustomersService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +26,7 @@ public class CustomerController {
     @PostMapping("/customers")
     public ResponseEntity<CustomersDto> createCustomer(
             @RequestBody @Valid CustomersRequestDto request
-    ) {
+    ) throws GroupNotFoundException, CustomerAlreadyExistsException {
         log.info("===== Start create customer by request : {} =====", request);
         final CustomersDto customersDto = customersService.createCustomer(request);
         log.info("===== End create customer =====");
@@ -34,7 +37,7 @@ public class CustomerController {
     public ResponseEntity<CustomersDto> updateCustomerById(
             @PathVariable("customerId") UUID customerId,
             @RequestBody @Valid CustomerSalaryRequestDto request
-    ) {
+    ) throws GroupNotFoundException {
         log.info("===== Start patch salary by customerId : {} =====", customerId);
         final CustomersDto customersDto = customersService.updateCustomer(customerId, request);
         log.info("===== End patch salary =====");
@@ -44,7 +47,7 @@ public class CustomerController {
     @GetMapping("/customers/{customerId}")
     public ResponseEntity<CustomersDto> getCustomerById(
             @PathVariable("customerId") UUID customerId
-    ) {
+    ) throws CustomerNotFoundException {
         log.info("===== Start get customer by customerId : {} =====", customerId);
         final CustomersDto customer = customersService.getCustomerById(customerId);
         log.info("===== End get customer by customerId : {} =====", customerId);
@@ -54,7 +57,7 @@ public class CustomerController {
     @GetMapping("/customers/groups")
     public ResponseEntity<List<CustomersDto>> getCustomerByGroupName(
             @ModelAttribute @Valid CustomerGroupNamesRequestDto request
-    ) {
+    ) throws GroupNotFoundException {
         log.info("===== Start get customer by groupName : {} =====", request.getGroupName());
         final List<CustomersDto> customers = customersService.getCustomerByGroupName(request);
         log.info("===== End get customer by groupName =====");

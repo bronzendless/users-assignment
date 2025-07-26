@@ -32,7 +32,7 @@ public class CustomersService {
     private final CustomersMapper customerMapper;
 
     @Transactional
-    public CustomersDto createCustomer(CustomersRequestDto request) {
+    public CustomersDto createCustomer(CustomersRequestDto request) throws CustomerAlreadyExistsException, GroupNotFoundException {
         if (customerRepository.existsByName(request.getName())) {
             throw new CustomerAlreadyExistsException("name");
         }
@@ -51,7 +51,7 @@ public class CustomersService {
     }
 
     @Transactional
-    public CustomersDto updateCustomer(UUID customerId, CustomerSalaryRequestDto request) {
+    public CustomersDto updateCustomer(UUID customerId, CustomerSalaryRequestDto request) throws GroupNotFoundException {
         CustomersEntity customersEntity = customerRepository.getReferenceById(customerId);
 
 //        updateCustomerGroups(customersEntity, request.getSalary());
@@ -69,7 +69,7 @@ public class CustomersService {
     }
 
     @Transactional(readOnly = true)
-    public CustomersDto getCustomerById(UUID customerId) {
+    public CustomersDto getCustomerById(UUID customerId) throws CustomerNotFoundException {
         Optional<CustomersEntity> customersEntityOpt = customerRepository.findById(customerId);
         CustomersEntity customersEntity = customersEntityOpt
                 .orElseThrow(() -> new CustomerNotFoundException("group"));
@@ -77,7 +77,7 @@ public class CustomersService {
     }
 
     @Transactional(readOnly = true)
-    public List<CustomersDto> getCustomerByGroupName(CustomerGroupNamesRequestDto request) {
+    public List<CustomersDto> getCustomerByGroupName(CustomerGroupNamesRequestDto request) throws GroupNotFoundException {
         Optional<GroupsEntity> groupsEntityOtp = groupsRepository.findByName(request.getGroupName());
         GroupsEntity groupsEntity = groupsEntityOtp
                 .orElseThrow(() -> new GroupNotFoundException("group"));
@@ -95,7 +95,7 @@ public class CustomersService {
     private void updateCustomerGroups(
             CustomersEntity customersEntity,
             BigDecimal salary
-    ) {
+    ) throws GroupNotFoundException {
         Set<GroupsEntity> groupsEntity = customersEntity.getGroups();
         CustomerGroups customerGroups = getCustomerGroupsBySalary(salary);
 
@@ -103,12 +103,11 @@ public class CustomersService {
                 .anyMatch(item -> item.getName().equals(customerGroups.toString()));
 
         if (!isExistsGroup) {
-            Optional<GroupsEntity> groupEntity = groupsRepository.findByName(customerGroups.toString());
-            if (groupEntity.isEmpty()) {
-                throw new GroupNotFoundException("group");
-            }
+            Optional<GroupsEntity> groupEntityOtp = groupsRepository.findByName(customerGroups.toString());
+            GroupsEntity groupEntity = groupEntityOtp
+                    .orElseThrow(() -> new GroupNotFoundException("group"));
             groupsEntity.removeIf(item -> !item.getName().equals(CustomerGroups.CUSTOMER.toString()));
-            groupsEntity.add(groupEntity.get());
+            groupsEntity.add(groupEntity);
         }
 
         customersEntity.setGroups(groupsEntity);
@@ -118,18 +117,18 @@ public class CustomersService {
     private void replaceCustomerGroups(
             CustomersEntity customersEntity,
             BigDecimal salary
-    ) {
+    ) throws GroupNotFoundException {
         Set<GroupsEntity> groupsEntities = getGruopBySalary(salary);
         customersEntity.setGroups(groupsEntities);
     }
 
-    private Set<GroupsEntity> getGruopBySalary(BigDecimal salary) {
+    private Set<GroupsEntity> getGruopBySalary(BigDecimal salary) throws GroupNotFoundException {
         CustomerGroups group = getCustomerGroupsBySalary(salary);
         List<String> groupNames = List.of(CustomerGroups.CUSTOMER.toString(), group.toString());
         return groupsRepository.findByNameIn(groupNames);
     }
 
-    private CustomerGroups getCustomerGroupsBySalary(BigDecimal salary) {
+    private CustomerGroups getCustomerGroupsBySalary(BigDecimal salary) throws GroupNotFoundException {
         if (salary.compareTo(SalaryThresholds.SALARY_100K) > 0) {
             return CustomerGroups.PLATINUM;
         } else if (salary.compareTo(SalaryThresholds.SALARY_100K) <= 0 &&
